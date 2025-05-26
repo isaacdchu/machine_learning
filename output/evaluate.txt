@@ -1,0 +1,7 @@
+Average Loss: 0.254451
+True Positive: 1538
+True Negative: 5573
+False Positive: 365
+False Negative: 522
+Accuracy: 88.9097%
+AUC: 0.746602
