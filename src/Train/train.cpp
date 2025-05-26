@@ -19,6 +19,6 @@ int main(int argc, char **argv) {
     LogisticRegression model(params_path);
     model.load_data(data_path, true);
     model.train();
-    model.save_model("./output/logisic_regression.model");
+    model.save_model("./output/logistic_regression.model");
     return 0;
 }
