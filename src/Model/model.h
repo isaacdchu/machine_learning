@@ -13,8 +13,8 @@ public:
     virtual void save_model(const std::string &model_path) const = 0;
     virtual void print_model() const = 0;
     virtual void train() = 0;
-    virtual void predict() = 0;
-    virtual void evaluate() = 0;
+    virtual void predict() const = 0;
+    virtual void evaluate() const = 0;
 
 protected:
     virtual void handle_params(const std::string &params_path) = 0;

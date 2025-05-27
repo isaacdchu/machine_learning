@@ -1,11 +1,11 @@
 #include "metric_utils.h"
 
-unsigned int* confusion_matrix(const std::vector<int> &classifications, const std::vector<int> &label_values) {
+std::vector<unsigned int> confusion_matrix(const std::vector<int> &classifications, const std::vector<int> &label_values) {
     if (classifications.size() != label_values.size()) {
         throw std::invalid_argument("Predictions and actuals must have the same size.");
     }
     
-    unsigned int* matrix = new unsigned int[4]{0, 0, 0, 0}; // [TP, FP, FN, TN]
+    std::vector<unsigned int> matrix(4, 0); // [TP, FP, FN, TN]
     
     for (size_t i = 0; i < classifications.size(); ++i) {
         if (classifications[i] == 1 && label_values[i] == 1) {

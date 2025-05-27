@@ -14,14 +14,14 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
     if (!data_file.is_open()) {
         throw std::runtime_error("(load_data) Unable to open data file");
     }
-
     std::ofstream tmp_file(tmp_path, std::ios::trunc);
     if (!tmp_file.is_open()) {
         throw std::runtime_error("(load_data) Unable to open tmp file");
     }
+
     // Read data file and write every 5th line to tmp file
     std::string line;
-    getline(data_file, line); // Skip header line
+    getline(data_file, line);
     unsigned int line_num = 0;
     unsigned int i_outlier = 0;
     while (getline(data_file, line)) {
@@ -33,6 +33,7 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
             // Print line to "./tmp/tmp_train.txt" for early stopping
             tmp_file << line << std::endl;
         }
+        i_outlier++;
     }
     tmp_file.close();
     data_file.close();
@@ -113,6 +114,7 @@ void LogisticRegression::train(){
         if (epoch % 5 != 0) {
             continue;
         }
+
         // Early stopping (checked every 5 epochs)
         float val_loss = get_val_loss(val_file, prev_val_loss);
         val_file.clear();
@@ -123,11 +125,12 @@ void LogisticRegression::train(){
         }
         prev_val_loss = val_loss;
     }
+    
     val_file.close();
     data_file.close();
 }
 
-void LogisticRegression::predict() {
+void LogisticRegression::predict() const {
     std::string line;
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
@@ -146,7 +149,7 @@ void LogisticRegression::predict() {
     data_file.close();
 }
 
-void LogisticRegression::evaluate() {
+void LogisticRegression::evaluate() const {
     std::string line;
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
@@ -163,12 +166,13 @@ void LogisticRegression::evaluate() {
         label_values.push_back(get_label_value(line));
         predictions.push_back(make_prediction(feature_values));
         classifications.push_back(classify(predictions.back()));
+
         // Calculate loss
         total_loss += loss(predictions.back(), label_values.back());
         count++;
     }
     data_file.close();
-    unsigned int* conf_matrix = confusion_matrix(classifications, label_values);
+    const std::vector<unsigned int> conf_matrix = confusion_matrix(classifications, label_values);
     std::cout << "Average Loss: " << total_loss / count << std::endl;
     std::cout << "True Positive: " << conf_matrix[0] << std::endl;
     std::cout << "True Negative: " << conf_matrix[1] << std::endl;
@@ -189,6 +193,7 @@ void LogisticRegression::handle_params(const std::string &params_path) {
     if (!params_file.is_open()) {
         throw std::runtime_error("(handle_params) Unable to open params/model file");
     }
+
     // Handle model parameters
     raw_params.reserve(PARAMS_SIZE());
     while (getline(params_file, line)) {
@@ -215,6 +220,7 @@ void LogisticRegression::handle_params(const std::string &params_path) {
     catch (const std::out_of_range &oor) {
         throw std::runtime_error("(handle_params parameters) Out of range");
     }
+
     // Handle model data if given
     if (empty_model) {
         params_file.close();
@@ -302,9 +308,9 @@ float LogisticRegression::auc(const std::vector<float> &predictions, const std::
         throw std::invalid_argument("(auc) Predictions and actuals must have the same size.");
     }
 
+    // Create ROC points by varying the threshold
     const int partitions = 100;
     std::vector<std::pair<float, float>> roc_points;
-
     for (int i = 0; i <= partitions; ++i) {
         float threshold = static_cast<float>(i) / partitions;
         std::vector<int> classifications;
@@ -314,13 +320,10 @@ float LogisticRegression::auc(const std::vector<float> &predictions, const std::
             classifications.push_back(classify(prediction, threshold));
         }
 
-        unsigned int *conf_matrix = confusion_matrix(classifications, label_values);
+        const std::vector<unsigned int> conf_matrix = confusion_matrix(classifications, label_values);
         float tp = conf_matrix[0], fp = conf_matrix[1], fn = conf_matrix[2], tn = conf_matrix[3];
-        delete[] conf_matrix;
-
         float tpr = (tp + fn > 0) ? tp / (tp + fn) : 0.0f;
         float fpr = (fp + tn > 0) ? fp / (fp + tn) : 0.0f;
-
         roc_points.emplace_back(fpr, tpr);
     }
 
@@ -334,7 +337,6 @@ float LogisticRegression::auc(const std::vector<float> &predictions, const std::
         float avg_tpr = 0.5f * (roc_points[i].second + roc_points[i - 1].second);
         area += delta_fpr * avg_tpr;
     }
-
     return area;
 }
 

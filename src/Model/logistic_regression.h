@@ -19,8 +19,8 @@ public:
     void save_model(const std::string &model_path) const override;
     void print_model() const override;
     void train() override;
-    void predict() override;
-    void evaluate() override;
+    void predict() const override;
+    void evaluate() const override;
 
 protected:
     void handle_params(const std::string &params_path) override;
