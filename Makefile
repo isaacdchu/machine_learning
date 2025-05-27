@@ -13,21 +13,24 @@ model_predict: output/predict.out
 
 # Build outputs
 output/train.out: src/Train/train.cpp src/Model/logistic_regression.cpp \
-    src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp \
-    src/Utils/utils.h src/Utils/math_utils.h src/Utils/data_utils.h src/Model/model.h src/Model/logistic_regression.h src/Train/train.h
-	clang++ src/Train/train.cpp src/Model/logistic_regression.cpp src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp -o output/train.out -Isrc/Train -Isrc/Utils -Isrc/Model \
+    src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp src/Utils/metric_utils.cpp \
+    src/Utils/utils.h src/Utils/math_utils.h src/Utils/data_utils.h src/Utils/metric_utils.h \
+    src/Model/model.h src/Model/logistic_regression.h src/Train/train.h
+	clang++ src/Train/train.cpp src/Model/logistic_regression.cpp src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp src/Utils/metric_utils.cpp -o output/train.out -Isrc/Train -Isrc/Utils -Isrc/Model \
 	-std=c++23
 
 output/evaluate.out: src/Evaluate/evaluate.cpp src/Model/logistic_regression.cpp \
-    src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp \
-    src/Utils/utils.h src/Utils/math_utils.h src/Utils/data_utils.h src/Model/model.h src/Model/logistic_regression.h src/Evaluate/evaluate.h
-	clang++ src/Evaluate/evaluate.cpp src/Model/logistic_regression.cpp src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp -o output/evaluate.out -Isrc/Evaluate -Isrc/Utils -Isrc/Model \
+    src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp src/Utils/metric_utils.cpp \
+    src/Utils/utils.h src/Utils/math_utils.h src/Utils/data_utils.h src/Utils/metric_utils.h \
+    src/Model/model.h src/Model/logistic_regression.h src/Evaluate/evaluate.h
+	clang++ src/Evaluate/evaluate.cpp src/Model/logistic_regression.cpp src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp src/Utils/metric_utils.cpp -o output/evaluate.out -Isrc/Evaluate -Isrc/Utils -Isrc/Model \
 	-std=c++23
 
 output/predict.out: src/Predict/predict.cpp src/Model/logistic_regression.cpp \
-    src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp \
-    src/Utils/utils.h src/Utils/math_utils.h src/Utils/data_utils.h src/Model/model.h src/Model/logistic_regression.h src/Predict/predict.h
-	clang++ src/Predict/predict.cpp src/Model/logistic_regression.cpp src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp -o output/predict.out -Isrc/Predict -Isrc/Utils -Isrc/Model \
+    src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp src/Utils/metric_utils.cpp \
+    src/Utils/utils.h src/Utils/math_utils.h src/Utils/data_utils.h src/Utils/metric_utils.h \
+    src/Model/model.h src/Model/logistic_regression.h src/Predict/predict.h
+	clang++ src/Predict/predict.cpp src/Model/logistic_regression.cpp src/Utils/utils.cpp src/Utils/math_utils.cpp src/Utils/data_utils.cpp src/Utils/metric_utils.cpp -o output/predict.out -Isrc/Predict -Isrc/Utils -Isrc/Model \
 	-std=c++23
 
 # Clean

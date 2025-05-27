@@ -148,10 +148,6 @@ void LogisticRegression::predict() {
 }
 
 void LogisticRegression::evaluate() {
-    unsigned int true_positive = 0;
-    unsigned int true_negative = 0;
-    unsigned int false_positive = 0;
-    unsigned int false_negative = 0;
     std::string line;
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
@@ -160,37 +156,28 @@ void LogisticRegression::evaluate() {
     getline(data_file, line); // Skip header line
     float total_loss = 0.0f;
     unsigned int count = 0;
+    std::vector<int> label_values;
+    std::vector<float> predictions;
+    std::vector<int> classifications;
     while (getline(data_file, line)) {
         std::vector<float> feature_values = normalize_data(get_feature_values(line), info.min, info.max);
-        float label_value = get_label_value(line);
-        float prediction = make_prediction(feature_values);
-        int classification = classify(prediction);
-        // Confusion matrix
-        if (classification == 1 && label_value == 1) {
-            true_positive++;
-        }
-        else if (classification == 0 && label_value == 0) {
-            true_negative++;
-        }
-        else if (classification == 1 && label_value == 0) {
-            false_positive++;
-        }
-        else if (classification == 0 && label_value == 1) {
-            false_negative++;
-        }
+        label_values.push_back(get_label_value(line));
+        predictions.push_back(make_prediction(feature_values));
+        classifications.push_back(classify(predictions.back()));
         // Calculate loss
-        total_loss += loss(prediction, label_value);
+        total_loss += loss(predictions.back(), label_values.back());
         count++;
     }
     data_file.close();
+    unsigned int* conf_matrix = confusion_matrix(classifications, label_values);
     std::cout << "Average Loss: " << total_loss / count << std::endl;
-    std::cout << "True Positive: " << true_positive << std::endl;
-    std::cout << "True Negative: " << true_negative << std::endl;
-    std::cout << "False Positive: " << false_positive << std::endl;
-    std::cout << "False Negative: " << false_negative << std::endl;
-    std::cout << "Accuracy: " << (true_positive + true_negative) / static_cast<float>(count) << std::endl;
-    std::cout << "Precision: " << static_cast<float>(true_positive) / (true_positive + false_positive) << std::endl;
-    std::cout << "Recall: " << static_cast<float>(true_positive) / (true_positive + false_negative) << std::endl;
+    std::cout << "True Positive: " << conf_matrix[0] << std::endl;
+    std::cout << "True Negative: " << conf_matrix[1] << std::endl;
+    std::cout << "False Positive: " << conf_matrix[2] << std::endl;
+    std::cout << "False Negative: " << conf_matrix[3] << std::endl;
+    std::cout << "Accuracy: " << accuracy(classifications, label_values) << std::endl;
+    std::cout << "Precision: " << precision(classifications, label_values) << std::endl;
+    std::cout << "Recall: " << recall(classifications, label_values) << std::endl;
 }
 
 /**
@@ -298,7 +285,7 @@ void LogisticRegression::update_model(const std::vector<float> &prediction_batch
     }
 }
 
-float LogisticRegression::get_val_loss(std::ifstream &val_file, const float prev_val_loss) {
+float LogisticRegression::get_val_loss(std::ifstream &val_file, const float prev_val_loss) const {
     std::string line;
     float val_loss = 0.0f;
     unsigned int val_line_num = 0;
@@ -327,10 +314,10 @@ inline std::vector<float> LogisticRegression::loss_gradient(const std::vector<fl
     return subtract(predictions, actuals);
 }
 
-float LogisticRegression::make_prediction(const std::vector<float> &feature_values) {
+float LogisticRegression::make_prediction(const std::vector<float> &feature_values) const {
     return sigmoid(dot(this->info.weights, feature_values) + this->info.bias);
 }
 
-inline int LogisticRegression::classify(const float prediction) {
+inline int LogisticRegression::classify(const float prediction) const {
     return (prediction >= this->params.threshold) ? 1 : 0;
 }

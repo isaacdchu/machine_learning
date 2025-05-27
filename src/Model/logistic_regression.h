@@ -8,6 +8,7 @@
 #include "../Utils/utils.h"
 #include "../Utils/math_utils.h"
 #include "../Utils/data_utils.h"
+#include "../Utils/metric_utils.h"
 
 class LogisticRegression : public Model {
 public:
@@ -25,8 +26,8 @@ protected:
     float loss(const float predicted, const float actual) const override;
     float loss_gradient(const float predicted, const float actual) const override;
     std::vector<float> loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) const override;
-    float make_prediction(const std::vector<float> &feature_values);
-    int classify(const float prediction);
+    float make_prediction(const std::vector<float> &feature_values) const;
+    int classify(const float prediction) const;
     // learning_rate, batch_size, num_epochs, threshold, outlier_std, early_stopping_threshold
     inline int PARAMS_SIZE() const override {return 6;}
     // weights, bias, min, max
@@ -53,7 +54,7 @@ private:
     const std::filesystem::path tmp_path = "./tmp/tmp_train.txt";
     void process_epoch(std::ifstream &data_file);
     void update_model(const std::vector<float> &prediction_batch, const std::vector<float> &label_value_batch, const std::vector<std::vector<float>> &feature_values_batch);
-    float get_val_loss(std::ifstream &val_file, const float prev_val_loss);
+    float get_val_loss(std::ifstream &val_file, const float prev_val_loss) const;
 };
 
 #endif // LOGISTIC_REGRESSION_H
