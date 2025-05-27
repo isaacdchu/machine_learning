@@ -27,14 +27,12 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
     // Prepare validation data for early stopping
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
-        std::cout << "(load_data) Unable to open file" << std::endl;
-        throw 3;
+        throw std::runtime_error("(load_data) Unable to open data file");
     }
     
     std::ofstream tmp_file(tmp_path, std::ios::trunc);
     if (!tmp_file.is_open()){
-        std::cout << "(load_data) Unable to open tmp file" << std::endl;
-        throw 3;
+        throw std::runtime_error("(load_data) Unable to open tmp file");
     }
     // Read data file and write every 5th line to tmp file
     std::string line;
@@ -59,8 +57,7 @@ void LogisticRegression::save_model(const std::string &model_path) {
     assert(!data_path.empty() && "Saving model requires data path");
     std::ofstream model_file(model_path);
     if (!model_file.is_open()) {
-        std::cout << "Unable to open model file" << std::endl;
-        throw 3;
+        throw std::runtime_error("(save_model) Unable to open model file");
     }
 
     // Save parameters
@@ -100,30 +97,36 @@ void LogisticRegression::train(){
     assert(!data_path.empty()&& "Training requires data path");
     assert(contains_label && "Training requires labeled data");
     std::ifstream data_file(data_path);
-        if (!data_file.is_open()) {
-            std::cout << "(train) Unable to open file" << std::endl;
-            throw 3;
-        }
+    if (!data_file.is_open()) {
+        throw std::runtime_error("(train) Unable to open data file");
+    }
+    std::string tmp_path = "./tmp/tmp_train.txt";
+    std::ifstream val_file(tmp_path);
+    if (!val_file.is_open()) {
+        throw std::runtime_error("(train) Unable to open tmp file for early stopping");
+    }
     std::string line;
     float prev_val_loss = MAXFLOAT;
     for (int epoch = 0; epoch < params.num_epochs; ++epoch) {
         std::cout<< "Epoch: " << epoch + 1 << "/" << params.num_epochs << std::endl;
         std::vector<float> label_value_batch(params.batch_size);
         std::vector<float> prediction_batch(params.batch_size);
+        std::vector<std::vector<float>> feature_values_batch(params.batch_size);
         getline(data_file, line); // Skip header line
-        int i_batch = 0;
-        int line_num = 0;
-        int i_outlier = 0;
+        unsigned int i_batch = 0;
+        unsigned int line_num = 0;
+        unsigned int i_outlier = 0;
         while (getline(data_file, line)) {
             if (outliers.find(i_outlier) != outliers.end()) {
                 i_outlier++;
                 // Skip outliers
                 continue;
             }
-            std::vector<float> processed_line = process_line(parse_csv_line(&line));
-            std::vector<float> feature_values = normalize_data(get_feature_values(processed_line), info.min, info.max);
+            const std::vector<float> processed_line = process_line(parse_csv_line(&line));
+            const std::vector<float> feature_values = normalize_data(get_feature_values(processed_line), info.min, info.max);
             label_value_batch[i_batch] = get_label_value(processed_line);
             prediction_batch[i_batch] = make_prediction(feature_values);
+            feature_values_batch[i_batch] = feature_values;
             i_batch++;
             if (i_batch == params.batch_size) {
                 // Adjust weights and bias for the batch
@@ -137,18 +140,12 @@ void LogisticRegression::train(){
                 i_batch = 0; // Reset batch index
             }
         }
+        data_file.clear();
+        data_file.seekg(0, std::ios::beg);
         if (epoch % 5 != 0) {
-            data_file.clear();
-            data_file.seekg(0, std::ios::beg);
             continue;
         }
         // Early stopping
-        std::string tmp_path = "./tmp/tmp_train.txt";
-        std::ifstream val_file(tmp_path);
-        if (!val_file.is_open()) {
-            std::cout << "(train) Unable to open tmp file for early stopping" << std::endl;
-            throw 3;
-        }
         float val_loss = 0.0f;
         while (getline(val_file, line)) {
             std::vector<float> processed_line = process_line(parse_csv_line(&line));
@@ -157,15 +154,15 @@ void LogisticRegression::train(){
             float prediction = make_prediction(feature_values);
             val_loss += loss(prediction, label_value);
         }
-        val_file.close();
         if (val_loss > prev_val_loss * (1.0f + params.early_stopping_threshold)) {
             std::cout << "Early stopping at epoch " << epoch << " with validation loss: " << val_loss << std::endl;
             break;
         }
         prev_val_loss = val_loss;
-        data_file.clear();
-        data_file.seekg(0, std::ios::beg);
+        val_file.clear();
+        val_file.seekg(0, std::ios::beg);
     }
+    val_file.close();
     data_file.close();
 }
 
@@ -174,8 +171,7 @@ void LogisticRegression::predict() {
     std::string line;
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
-        std::cout << "(predict) Unable to open file" << std::endl;
-        throw 3;
+        throw std::runtime_error("(predict) Unable to open data file");
     }
     getline(data_file, line); // Skip header line
     while (getline(data_file, line)) {
@@ -193,19 +189,18 @@ void LogisticRegression::predict() {
 void LogisticRegression::evaluate() {
     assert(!data_path.empty() && "Evaluating requires data path");
     assert(contains_label && "Evaluating requires labeled data");
-    int true_positive = 0;
-    int true_negative = 0;
-    int false_positive = 0;
-    int false_negative = 0;
+    unsigned int true_positive = 0;
+    unsigned int true_negative = 0;
+    unsigned int false_positive = 0;
+    unsigned int false_negative = 0;
     std::string line;
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
-        std::cout << "(evaluate) Unable to open file" << std::endl;
-        throw 3;
+        throw std::runtime_error("(evaluate) Unable to open data file");
     }
     getline(data_file, line); // Skip header line
     float total_loss = 0.0f;
-    int count = 0;
+    unsigned int count = 0;
     while (getline(data_file, line)) {
         std::vector<float> processed_line = process_line(parse_csv_line(&line));
         std::vector<float> feature_values = normalize_data(get_feature_values(processed_line), info.min, info.max);
@@ -235,8 +230,9 @@ void LogisticRegression::evaluate() {
     std::cout << "True Negative: " << true_negative << std::endl;
     std::cout << "False Positive: " << false_positive << std::endl;
     std::cout << "False Negative: " << false_negative << std::endl;
-    std::cout << "Accuracy: " << (true_positive + true_negative) / static_cast<float>(count) * 100.0f << "%" << std::endl;
-    std::cout << "AUC: " << static_cast<float>(true_positive) / (true_positive + false_negative) << std::endl;
+    std::cout << "Accuracy: " << (true_positive + true_negative) / static_cast<float>(count) * 100.0f << std::endl;
+    std::cout << "Precision: " << static_cast<float>(true_positive) / (true_positive + false_positive) << std::endl;
+    std::cout << "Recall: " << static_cast<float>(true_positive) / (true_positive + false_negative) << std::endl;
 }
 
 /**
@@ -249,8 +245,7 @@ void LogisticRegression::handle_params(const std::string &params_path) {
     std::string line;
     std::ifstream params_file(params_path);
     if (!params_file.is_open()) {
-        std::cout << "Unable to open params/model file" << std::endl;
-        throw 3;
+        throw std::runtime_error("(handle_params) Unable to open params/model file");
     }
     // Handle model parameters
     raw_params.reserve(PARAMS_SIZE());
@@ -262,8 +257,7 @@ void LogisticRegression::handle_params(const std::string &params_path) {
         raw_params.push_back(line);
     }
     if (raw_params.size() != PARAMS_SIZE()) {
-        std::cout << "Invalid number of parameters" << std::endl;
-        throw 1;
+        throw std::runtime_error("(handle_params) Invalid number of parameters");
     }
     try {
         params.learning_rate = std::stof(raw_params[0]);
@@ -274,12 +268,10 @@ void LogisticRegression::handle_params(const std::string &params_path) {
         params.early_stopping_threshold = std::stof(raw_params[5]);
     }
     catch (const std::invalid_argument &ia) {
-        std::cout << "(handle_params parameters) Invalid argument: " << ia.what() << std::endl;
-        throw 1;
+        throw std::runtime_error("(handle_params parameters) Invalid argument");
     }
     catch (const std::out_of_range &oor) {
-        std::cout << "(handle_params parameters) Out of range: " << oor.what() << std::endl;
-        throw 2;
+        throw std::runtime_error("(handle_params parameters) Out of range");
     }
     // Handle model data if given
     if (empty_model) {
@@ -291,9 +283,7 @@ void LogisticRegression::handle_params(const std::string &params_path) {
         raw_info.push_back(line);
     } while (getline(params_file, line) && raw_info.size() < INFO_SIZE());
     if (raw_info.size() != INFO_SIZE()) {
-        std::cout << "Invalid model info: " << raw_info.size() << std::endl;
-        std::cout << line << std::endl;
-        throw 1;
+        throw std::runtime_error("(handle_params model info) Invalid number of model info lines");
     }
     try {
         info.weights = process_line(parse_csv_line(&raw_info[0]));
@@ -302,18 +292,18 @@ void LogisticRegression::handle_params(const std::string &params_path) {
         info.max = process_line(parse_csv_line(&raw_info[3]));
     }
     catch (const std::invalid_argument &ia) {
-        std::cout << "(handle_params model info) Invalid argument: " << ia.what() << std::endl;
-        throw 1;
+        throw std::runtime_error("(handle_params model info) Invalid argument");
     }
     catch (const std::out_of_range &oor) {
-        std::cout << "(handle_params model info) Out of range: " << oor.what() << std::endl;
-        throw 2;
+        throw std::runtime_error("(handle_params model info) Out of range");
     }
     params_file.close();
 }
 
 float LogisticRegression::loss(const float prediction, const float actual) {
-    return (-actual * log(prediction) - (1 - actual) * log(1 - prediction));
+    float eps = 1e-7f;
+    float p = std::clamp(prediction, eps, 1.0f - eps);
+    return (-actual * log(p) - (1 - actual) * log(1 - p));
 }
 
 inline float LogisticRegression::loss_gradient(const float prediction, const float actual) {
