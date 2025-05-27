@@ -20,7 +20,7 @@ int get_num_features(const std::string &data_path, bool contains_label) {
         throw 3;
     }
     getline(data_file, line);
-    std::vector<std::string> parsed_line = parse_csv_line(&line);
+    std::vector<std::string> parsed_line = parse_csv_line(line);
     data_file.close();
     return parsed_line.size() - contains_label;
 }

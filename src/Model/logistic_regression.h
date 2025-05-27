@@ -14,17 +14,17 @@ public:
     LogisticRegression() = delete; // Prevent default constructor
     LogisticRegression(const std::string &params_path);
     void load_data(const std::string &data_path, bool contains_label) override;
-    void save_model(const std::string &model_path) override;
-    void print_model() override;
+    void save_model(const std::string &model_path) const override;
+    void print_model() const override;
     void train() override;
     void predict() override;
     void evaluate() override;
 
 protected:
     void handle_params(const std::string &params_path) override;
-    float loss(const float predicted, const float actual) override;
-    float loss_gradient(const float predicted, const float actual) override;
-    std::vector<float> loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) override;
+    float loss(const float predicted, const float actual) const override;
+    float loss_gradient(const float predicted, const float actual) const override;
+    std::vector<float> loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) const override;
     float make_prediction(const std::vector<float> &feature_values);
     int classify(const float prediction);
     // learning_rate, batch_size, num_epochs, threshold, outlier_std, early_stopping_threshold
@@ -51,7 +51,9 @@ private:
     bool empty_model;
     std::unordered_set<int> outliers;
     const std::filesystem::path tmp_path = "./tmp/tmp_train.txt";
+    void process_epoch(std::ifstream &data_file);
     void update_model(const std::vector<float> &prediction_batch, const std::vector<float> &label_value_batch, const std::vector<std::vector<float>> &feature_values_batch);
+    float get_val_loss(std::ifstream &val_file, const float prev_val_loss);
 };
 
 #endif // LOGISTIC_REGRESSION_H
