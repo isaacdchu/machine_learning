@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <filesystem>
+#include <algorithm>
 
 #include "model.h"
 #include "../Utils/utils.h"
@@ -28,6 +29,7 @@ protected:
     std::vector<float> loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) const override;
     float make_prediction(const std::vector<float> &feature_values) const;
     int classify(const float prediction) const;
+    int classify(const float prediction, const float threshold) const;
     // learning_rate, batch_size, num_epochs, threshold, outlier_std, early_stopping_threshold
     inline int PARAMS_SIZE() const override {return 6;}
     // weights, bias, min, max
@@ -55,6 +57,7 @@ private:
     void process_epoch(std::ifstream &data_file);
     void update_model(const std::vector<float> &prediction_batch, const std::vector<float> &label_value_batch, const std::vector<std::vector<float>> &feature_values_batch);
     float get_val_loss(std::ifstream &val_file, const float prev_val_loss) const;
+    float auc(const std::vector<float> &predictions, const std::vector<int> &label_values) const;
 };
 
 #endif // LOGISTIC_REGRESSION_H

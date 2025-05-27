@@ -6,3 +6,4 @@ False Negative: 5504
 Accuracy: 0.886097
 Precision: 0.784829
 Recall: 0.768447
+AUC: 0.950458

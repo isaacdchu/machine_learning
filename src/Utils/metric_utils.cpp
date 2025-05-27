@@ -8,13 +8,13 @@ unsigned int* confusion_matrix(const std::vector<int> &classifications, const st
     unsigned int* matrix = new unsigned int[4]{0, 0, 0, 0}; // [TP, FP, FN, TN]
     
     for (size_t i = 0; i < classifications.size(); ++i) {
-        if (classifications[i] == 1.0f && label_values[i] == 1.0f) {
+        if (classifications[i] == 1 && label_values[i] == 1) {
             matrix[0]++; // True Positive
-        } else if (classifications[i] == 1.0f && label_values[i] == 0.0f) {
+        } else if (classifications[i] == 1 && label_values[i] == 0) {
             matrix[1]++; // False Positive
-        } else if (classifications[i] == 0.0f && label_values[i] == 1.0f) {
+        } else if (classifications[i] == 0 && label_values[i] == 1) {
             matrix[2]++; // False Negative
-        } else if (classifications[i] == 0.0f && label_values[i] == 0.0f) {
+        } else if (classifications[i] == 0 && label_values[i] == 0) {
             matrix[3]++; // True Negative
         }
     }
@@ -22,8 +22,7 @@ unsigned int* confusion_matrix(const std::vector<int> &classifications, const st
     return matrix;
 }
 
-float accuracy(const std::vector<int> &classifications, const std::vector<int> &label_values)
-{
+float accuracy(const std::vector<int> &classifications, const std::vector<int> &label_values) {
     if (classifications.size() != label_values.size()) {
         throw std::invalid_argument("Predictions and actuals must have the same size.");
     }
@@ -38,8 +37,7 @@ float accuracy(const std::vector<int> &classifications, const std::vector<int> &
     return static_cast<float>(correct) / classifications.size();
 }
 
-float precision(const std::vector<int> &classifications, const std::vector<int> &label_values)
-{
+float precision(const std::vector<int> &classifications, const std::vector<int> &label_values) {
     if (classifications.size() != label_values.size()) {
         throw std::invalid_argument("Predictions and actuals must have the same size.");
     }
@@ -62,24 +60,19 @@ float precision(const std::vector<int> &classifications, const std::vector<int> 
     return static_cast<float>(true_positive) / (true_positive + false_positive);
 }
 
-float recall(const std::vector<int> &classifications, const std::vector<int> &label_values)
-{
-    if (classifications.size() != label_values.size())
-    {
+float recall(const std::vector<int> &classifications, const std::vector<int> &label_values) {
+    if (classifications.size() != label_values.size()){
         throw std::invalid_argument("Predictions and actuals must have the same size.");
     }
 
     unsigned int true_positive = 0;
     unsigned int false_negative = 0;
 
-    for (size_t i = 0; i < classifications.size(); ++i)
-    {
-        if (classifications[i] == 1.0f && label_values[i] == 1.0f)
-        {
+    for (size_t i = 0; i < classifications.size(); ++i) {
+        if (classifications[i] == 1.0f && label_values[i] == 1.0f) {
             true_positive++;
         }
-        else if (classifications[i] == 0.0f && label_values[i] == 1.0f)
-        {
+        else if (classifications[i] == 0.0f && label_values[i] == 1.0f) {
             false_negative++;
         }
     }

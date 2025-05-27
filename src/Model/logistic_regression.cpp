@@ -27,7 +27,6 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
     while (getline(data_file, line)) {
         if (outliers.find(i_outlier) != outliers.end()) {
             i_outlier++;
-            // Skip outliers
             continue;
         }
         if (++line_num % 5 == 0) {
@@ -50,7 +49,7 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
     int num_features = get_num_features(data_path, contains_label);
     info.weights.resize(num_features);
     for (int i = 0; i < num_features; ++i){
-        info.weights[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f; // small random values
+        info.weights[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f;
     }
     info.bias = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f;
 }
@@ -134,7 +133,7 @@ void LogisticRegression::predict() {
     if (!data_file.is_open()) {
         throw std::runtime_error("(predict) Unable to open data file");
     }
-    getline(data_file, line); // Skip header line
+    getline(data_file, line);
     while (getline(data_file, line)) {
         std::vector<std::string> parsed_csv_line = parse_csv_line(line);
         if (contains_label) {
@@ -153,7 +152,7 @@ void LogisticRegression::evaluate() {
     if (!data_file.is_open()) {
         throw std::runtime_error("(evaluate) Unable to open data file");
     }
-    getline(data_file, line); // Skip header line
+    getline(data_file, line);
     float total_loss = 0.0f;
     unsigned int count = 0;
     std::vector<int> label_values;
@@ -178,11 +177,9 @@ void LogisticRegression::evaluate() {
     std::cout << "Accuracy: " << accuracy(classifications, label_values) << std::endl;
     std::cout << "Precision: " << precision(classifications, label_values) << std::endl;
     std::cout << "Recall: " << recall(classifications, label_values) << std::endl;
+    std::cout << "AUC: " << auc(predictions, label_values) << std::endl;
 }
 
-/**
- * @return false if model info is given, true if only params are given
- */
 void LogisticRegression::handle_params(const std::string &params_path) {
     this->empty_model = true; // Assume model info is not given
     std::vector<std::string> raw_params;
@@ -250,7 +247,7 @@ void LogisticRegression::process_epoch(std::ifstream &data_file) {
     std::vector<float> label_value_batch(params.batch_size);
     std::vector<float> prediction_batch(params.batch_size);
     std::vector<std::vector<float>> feature_values_batch(params.batch_size);
-    getline(data_file, line); // Skip header line
+    getline(data_file, line);
     unsigned int i_batch = 0;
     unsigned int i_outlier = 0;
     while (getline(data_file, line)) {
@@ -300,6 +297,47 @@ float LogisticRegression::get_val_loss(std::ifstream &val_file, const float prev
     return val_loss;;
 }
 
+float LogisticRegression::auc(const std::vector<float> &predictions, const std::vector<int> &label_values) const {
+    if (predictions.size() != label_values.size()) {
+        throw std::invalid_argument("(auc) Predictions and actuals must have the same size.");
+    }
+
+    const int partitions = 100;
+    std::vector<std::pair<float, float>> roc_points;
+
+    for (int i = 0; i <= partitions; ++i) {
+        float threshold = static_cast<float>(i) / partitions;
+        std::vector<int> classifications;
+        classifications.reserve(predictions.size());
+
+        for (const auto &prediction : predictions) {
+            classifications.push_back(classify(prediction, threshold));
+        }
+
+        unsigned int *conf_matrix = confusion_matrix(classifications, label_values);
+        float tp = conf_matrix[0], fp = conf_matrix[1], fn = conf_matrix[2], tn = conf_matrix[3];
+        delete[] conf_matrix;
+
+        float tpr = (tp + fn > 0) ? tp / (tp + fn) : 0.0f;
+        float fpr = (fp + tn > 0) ? fp / (fp + tn) : 0.0f;
+
+        roc_points.emplace_back(fpr, tpr);
+    }
+
+    // Sort by FPR (x-axis)
+    std::sort(roc_points.begin(), roc_points.end());
+
+    // Trapezoidal integration
+    float area = 0.0f;
+    for (int i = 1; i <= partitions; ++i) {
+        float delta_fpr = roc_points[i].first - roc_points[i - 1].first;
+        float avg_tpr = 0.5f * (roc_points[i].second + roc_points[i - 1].second);
+        area += delta_fpr * avg_tpr;
+    }
+
+    return area;
+}
+
 float LogisticRegression::loss(const float prediction, const float actual) const {
     const float eps = 1e-7f;
     const float p = std::clamp(prediction, eps, 1.0f - eps);
@@ -320,4 +358,8 @@ float LogisticRegression::make_prediction(const std::vector<float> &feature_valu
 
 inline int LogisticRegression::classify(const float prediction) const {
     return (prediction >= this->params.threshold) ? 1 : 0;
+}
+
+inline int LogisticRegression::classify(const float prediction, const float threshold) const {
+    return (prediction >= threshold) ? 1 : 0;
 }
