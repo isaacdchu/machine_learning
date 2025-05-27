@@ -20,6 +20,7 @@ protected:
     virtual void handle_params(const std::string &params_path) = 0;
     virtual float loss(const float prediction, const float actual) = 0;
     virtual float loss_gradient(const float prediction, const float actual) = 0;
+    virtual std::vector<float> loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) = 0;
     std::string data_path;
     bool contains_label;
     virtual int PARAMS_SIZE() const = 0;

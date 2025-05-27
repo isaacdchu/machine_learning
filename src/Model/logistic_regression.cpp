@@ -99,23 +99,24 @@ void LogisticRegression::print_model() {
 void LogisticRegression::train(){
     assert(!data_path.empty()&& "Training requires data path");
     assert(contains_label && "Training requires labeled data");
-    float prev_val_loss = MAXFLOAT;
-    for (int epoch = 0; epoch < params.num_epochs; ++epoch) {
-        std::cout<< "Epoch: " << epoch + 1 << "/" << params.num_epochs << std::endl;
-        std::ifstream data_file(data_path);
+    std::ifstream data_file(data_path);
         if (!data_file.is_open()) {
             std::cout << "(train) Unable to open file" << std::endl;
             throw 3;
         }
-        std::string line;
+    std::string line;
+    float prev_val_loss = MAXFLOAT;
+    for (int epoch = 0; epoch < params.num_epochs; ++epoch) {
+        std::cout<< "Epoch: " << epoch + 1 << "/" << params.num_epochs << std::endl;
         std::vector<float> label_value_batch(params.batch_size);
         std::vector<float> prediction_batch(params.batch_size);
         getline(data_file, line); // Skip header line
         int i_batch = 0;
         int line_num = 0;
-        int i_outlier = -1;
+        int i_outlier = 0;
         while (getline(data_file, line)) {
-            if (outliers.find(++i_outlier) != outliers.end()) {
+            if (outliers.find(i_outlier) != outliers.end()) {
+                i_outlier++;
                 // Skip outliers
                 continue;
             }
@@ -126,18 +127,19 @@ void LogisticRegression::train(){
             i_batch++;
             if (i_batch == params.batch_size) {
                 // Adjust weights and bias for the batch
+                std::vector<float> errors = loss_gradient(prediction_batch, label_value_batch);
                 for (int i = 0; i < params.batch_size; ++i) {
-                    float error = loss_gradient(prediction_batch[i], label_value_batch[i]);
                     for (size_t j = 0; j < info.weights.size(); ++j) {
-                        info.weights[j] -= params.learning_rate * error * feature_values[j];
+                        info.weights[j] -= params.learning_rate * errors[i] * feature_values[j];
                     }
-                    info.bias -= params.learning_rate * error;
+                    info.bias -= params.learning_rate * errors[i];
                 }
                 i_batch = 0; // Reset batch index
             }
         }
-        data_file.close();
         if (epoch % 5 != 0) {
+            data_file.clear();
+            data_file.seekg(0, std::ios::beg);
             continue;
         }
         // Early stopping
@@ -158,10 +160,13 @@ void LogisticRegression::train(){
         val_file.close();
         if (val_loss > prev_val_loss * (1.0f + params.early_stopping_threshold)) {
             std::cout << "Early stopping at epoch " << epoch << " with validation loss: " << val_loss << std::endl;
-            return;
+            break;
         }
         prev_val_loss = val_loss;
+        data_file.clear();
+        data_file.seekg(0, std::ios::beg);
     }
+    data_file.close();
 }
 
 void LogisticRegression::predict() {
@@ -313,6 +318,10 @@ float LogisticRegression::loss(const float prediction, const float actual) {
 
 inline float LogisticRegression::loss_gradient(const float prediction, const float actual) {
     return (prediction - actual);
+}
+
+inline std::vector<float> LogisticRegression::loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) {
+    return subtract(predictions, actuals);
 }
 
 float LogisticRegression::make_prediction(const std::vector<float> &feature_values) {

@@ -24,7 +24,8 @@ protected:
     void handle_params(const std::string &params_path) override;
     float loss(const float predicted, const float actual) override;
     float loss_gradient(const float predicted, const float actual) override;
-    float make_prediction(const std::vector<float>& feature_values);
+    std::vector<float> loss_gradient(const std::vector<float> &predictions, const std::vector<float> &actuals) override;
+    float make_prediction(const std::vector<float> &feature_values);
     int classify(const float prediction);
     // learning_rate, batch_size, num_epochs, threshold, outlier_std, early_stopping_threshold
     inline int PARAMS_SIZE() const override {return 6;}

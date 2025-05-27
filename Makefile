@@ -1,7 +1,7 @@
 .PHONY: compile model_train model_predict model_evaluate clean
 
 # Targets
-compile: model_train model_evaluate model_predict
+compile: output/train.out output/evaluate.out output/predict.out
 model_train: output/train.out
 	@bash train.sh ./data/train_loan_data.csv ./conf/params.txt
 

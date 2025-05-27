@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
         throw 1;
     }
     if (argc > 3) {
-        cout << "Too many arguments. Only 1 argument allowed" << endl;
+        cout << "Too many arguments. Only 2 arguments allowed" << endl;
         throw 1;
     }
     const string data_path = argv[1];
