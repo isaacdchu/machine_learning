@@ -51,6 +51,7 @@ private:
     bool empty_model;
     std::unordered_set<int> outliers;
     const std::filesystem::path tmp_path = "./tmp/tmp_train.txt";
+    void update_model(const std::vector<float> &prediction_batch, const std::vector<float> &label_value_batch, const std::vector<std::vector<float>> &feature_values_batch);
 };
 
 #endif // LOGISTIC_REGRESSION_H

@@ -9,6 +9,36 @@ LogisticRegression::LogisticRegression(const std::string &params_path) {
 }
 
 void LogisticRegression::load_data(const std::string &data_path, bool contains_label){
+    // Prepare validation data for early stopping
+    std::ifstream data_file(data_path);
+    if (!data_file.is_open()) {
+        throw std::runtime_error("(load_data) Unable to open data file");
+    }
+
+    std::ofstream tmp_file(tmp_path, std::ios::trunc);
+    if (!tmp_file.is_open()) {
+        throw std::runtime_error("(load_data) Unable to open tmp file");
+    }
+    // Read data file and write every 5th line to tmp file
+    std::string line;
+    getline(data_file, line); // Skip header line
+    unsigned int line_num = 0;
+    unsigned int i_outlier = 0;
+    while (getline(data_file, line)) {
+        if (outliers.find(i_outlier) != outliers.end()) {
+            i_outlier++;
+            // Skip outliers
+            continue;
+        }
+        if (++line_num % 5 == 0) {
+            // Print line to "./tmp/tmp_train.txt" for early stopping
+            tmp_file << line << std::endl;
+        }
+    }
+    tmp_file.close();
+    data_file.close();
+
+    // Initilize model parameters and info
     this->data_path = data_path;
     this->contains_label = contains_label;
     outliers = get_outliers(data_path, contains_label, params.outlier_std);
@@ -23,34 +53,6 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
         info.weights[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f; // small random values
     }
     info.bias = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f;
-
-    // Prepare validation data for early stopping
-    std::ifstream data_file(data_path);
-    if (!data_file.is_open()) {
-        throw std::runtime_error("(load_data) Unable to open data file");
-    }
-    
-    std::ofstream tmp_file(tmp_path, std::ios::trunc);
-    if (!tmp_file.is_open()){
-        throw std::runtime_error("(load_data) Unable to open tmp file");
-    }
-    // Read data file and write every 5th line to tmp file
-    std::string line;
-    getline(data_file, line); // Skip header line
-    int line_num = 0;
-    int i_outlier = -1;
-    while (getline(data_file, line)) {
-        if (outliers.find(++i_outlier) != outliers.end()) {
-            // Skip outliers
-            continue;
-        }
-        if (++line_num % 5 == 0){
-            // Print line to "./tmp/tmp_train.txt" for early stopping
-            tmp_file << line << std::endl;
-        }
-    }
-    tmp_file.close();
-    data_file.close();
 }
 
 void LogisticRegression::save_model(const std::string &model_path) {
@@ -100,7 +102,6 @@ void LogisticRegression::train(){
     if (!data_file.is_open()) {
         throw std::runtime_error("(train) Unable to open data file");
     }
-    std::string tmp_path = "./tmp/tmp_train.txt";
     std::ifstream val_file(tmp_path);
     if (!val_file.is_open()) {
         throw std::runtime_error("(train) Unable to open tmp file for early stopping");
@@ -114,7 +115,6 @@ void LogisticRegression::train(){
         std::vector<std::vector<float>> feature_values_batch(params.batch_size);
         getline(data_file, line); // Skip header line
         unsigned int i_batch = 0;
-        unsigned int line_num = 0;
         unsigned int i_outlier = 0;
         while (getline(data_file, line)) {
             if (outliers.find(i_outlier) != outliers.end()) {
@@ -130,15 +130,13 @@ void LogisticRegression::train(){
             i_batch++;
             if (i_batch == params.batch_size) {
                 // Adjust weights and bias for the batch
-                std::vector<float> errors = loss_gradient(prediction_batch, label_value_batch);
-                for (int i = 0; i < params.batch_size; ++i) {
-                    for (size_t j = 0; j < info.weights.size(); ++j) {
-                        info.weights[j] -= params.learning_rate * errors[i] * feature_values[j];
-                    }
-                    info.bias -= params.learning_rate * errors[i];
-                }
+                update_model(prediction_batch, label_value_batch, feature_values_batch);
                 i_batch = 0; // Reset batch index
             }
+        }
+        // Handle the last batch
+        if (i_batch > 0) {
+            update_model(prediction_batch, label_value_batch, feature_values_batch);
         }
         data_file.clear();
         data_file.seekg(0, std::ios::beg);
@@ -147,13 +145,16 @@ void LogisticRegression::train(){
         }
         // Early stopping
         float val_loss = 0.0f;
+        unsigned int val_line_num = 0;
         while (getline(val_file, line)) {
             std::vector<float> processed_line = process_line(parse_csv_line(&line));
             std::vector<float> feature_values = normalize_data(get_feature_values(processed_line), info.min, info.max);
             float label_value = get_label_value(processed_line);
             float prediction = make_prediction(feature_values);
             val_loss += loss(prediction, label_value);
+            val_line_num++;
         }
+        val_loss /= val_line_num;
         if (val_loss > prev_val_loss * (1.0f + params.early_stopping_threshold)) {
             std::cout << "Early stopping at epoch " << epoch << " with validation loss: " << val_loss << std::endl;
             break;
@@ -230,7 +231,7 @@ void LogisticRegression::evaluate() {
     std::cout << "True Negative: " << true_negative << std::endl;
     std::cout << "False Positive: " << false_positive << std::endl;
     std::cout << "False Negative: " << false_negative << std::endl;
-    std::cout << "Accuracy: " << (true_positive + true_negative) / static_cast<float>(count) * 100.0f << std::endl;
+    std::cout << "Accuracy: " << (true_positive + true_negative) / static_cast<float>(count) << std::endl;
     std::cout << "Precision: " << static_cast<float>(true_positive) / (true_positive + false_positive) << std::endl;
     std::cout << "Recall: " << static_cast<float>(true_positive) / (true_positive + false_negative) << std::endl;
 }
@@ -239,7 +240,7 @@ void LogisticRegression::evaluate() {
  * @return false if model info is given, true if only params are given
  */
 void LogisticRegression::handle_params(const std::string &params_path) {
-    empty_model = true; // Assume model info is not given
+    this->empty_model = true; // Assume model info is not given
     std::vector<std::string> raw_params;
     std::vector<std::string> raw_info;
     std::string line;
@@ -251,7 +252,7 @@ void LogisticRegression::handle_params(const std::string &params_path) {
     raw_params.reserve(PARAMS_SIZE());
     while (getline(params_file, line)) {
         if (raw_params.size() >= PARAMS_SIZE()) {
-            empty_model = false; // Model info is given
+            this->empty_model = false; // Model info is given
             break;
         }
         raw_params.push_back(line);
@@ -300,9 +301,19 @@ void LogisticRegression::handle_params(const std::string &params_path) {
     params_file.close();
 }
 
+void LogisticRegression::update_model(const std::vector<float> &prediction_batch, const std::vector<float> &label_value_batch, const std::vector<std::vector<float>> &feature_values_batch) {
+    const std::vector<float> errors = loss_gradient(prediction_batch, label_value_batch);
+    for (size_t i = 0; i < prediction_batch.size(); ++i) {
+        for (size_t j = 0; j < info.weights.size(); ++j) {
+            this->info.weights[j] -= this->params.learning_rate * errors[i] * feature_values_batch[i][j];
+        }
+        this->info.bias -= this->params.learning_rate * errors[i];
+    }
+}
+
 float LogisticRegression::loss(const float prediction, const float actual) {
-    float eps = 1e-7f;
-    float p = std::clamp(prediction, eps, 1.0f - eps);
+    const float eps = 1e-7f;
+    const float p = std::clamp(prediction, eps, 1.0f - eps);
     return (-actual * log(p) - (1 - actual) * log(1 - p));
 }
 
@@ -315,9 +326,9 @@ inline std::vector<float> LogisticRegression::loss_gradient(const std::vector<fl
 }
 
 float LogisticRegression::make_prediction(const std::vector<float> &feature_values) {
-    return sigmoid(dot(info.weights, feature_values) + info.bias);
+    return sigmoid(dot(this->info.weights, feature_values) + this->info.bias);
 }
 
 inline int LogisticRegression::classify(const float prediction) {
-    return (prediction >= params.threshold) ? 1 : 0;
+    return (prediction >= this->params.threshold) ? 1 : 0;
 }
