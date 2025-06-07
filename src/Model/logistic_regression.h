@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <filesystem>
+#include <random>
 #include <algorithm>
 
 #include "model.h"

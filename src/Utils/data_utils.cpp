@@ -4,15 +4,7 @@
 #include "math_utils.h"
 #include "data_utils.h"
 
-int get_num_features(const std::string &data_path, bool contains_label);
-std::vector<float> normalize_data(const std::vector<float> &data, const std::vector<float> &min, const std::vector<float> &max);
-std::vector<float> get_min(const std::string &data_path, bool contains_label);
-std::vector<float> get_max(const std::string &data_path, bool contains_label);
-std::vector<float> get_min(const std::string &data_path, bool contains_label, std::unordered_set<int> &outliers);
-std::vector<float> get_max(const std::string &data_path, bool contains_label, std::unordered_set<int> &outliers);
-std::unordered_set<int> get_outliers(const std::string &data_path, bool contains_label, float std);
-
-int get_num_features(const std::string &data_path, bool contains_label) {
+unsigned int get_num_features(const std::string &data_path, bool contains_label) {
     std::string line;
     std::ifstream data_file(data_path);
     if (!data_file.is_open()) {
@@ -21,7 +13,6 @@ int get_num_features(const std::string &data_path, bool contains_label) {
     }
     getline(data_file, line);
     std::vector<std::string> parsed_line = parse_csv_line(line);
-    data_file.close();
     return parsed_line.size() - contains_label;
 }
 

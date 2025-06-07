@@ -35,8 +35,6 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
         }
         i_outlier++;
     }
-    tmp_file.close();
-    data_file.close();
 
     // Initilize model parameters and info
     this->data_path = data_path;
@@ -47,12 +45,14 @@ void LogisticRegression::load_data(const std::string &data_path, bool contains_l
     if (!empty_model) {
         return;
     }
-    int num_features = get_num_features(data_path, contains_label);
+    unsigned int num_features = get_num_features(data_path, contains_label);
     info.weights.resize(num_features);
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_real_distribution<float> dist(0.0f, 0.02f);
     for (int i = 0; i < num_features; ++i){
-        info.weights[i] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f;
+        info.weights[i] = dist(gen);
     }
-    info.bias = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 0.02f;
+    info.bias = dist(gen);
 }
 
 void LogisticRegression::save_model(const std::string &model_path) const {
@@ -74,8 +74,6 @@ void LogisticRegression::save_model(const std::string &model_path) const {
     model_file << info.bias << std::endl;
     print_vector(info.min, model_file);
     print_vector(info.max, model_file);
-
-    model_file.close();
 }
 
 void LogisticRegression::print_model() const {
@@ -125,9 +123,6 @@ void LogisticRegression::train(){
         }
         prev_val_loss = val_loss;
     }
-    
-    val_file.close();
-    data_file.close();
 }
 
 void LogisticRegression::predict() const {
@@ -146,7 +141,6 @@ void LogisticRegression::predict() const {
         float prediction = make_prediction(feature_values);
         std::cout << prediction << std::endl;
     }
-    data_file.close();
 }
 
 void LogisticRegression::evaluate() const {
@@ -171,13 +165,13 @@ void LogisticRegression::evaluate() const {
         total_loss += loss(predictions.back(), label_values.back());
         count++;
     }
-    data_file.close();
+
     const std::vector<unsigned int> conf_matrix = confusion_matrix(classifications, label_values);
     std::cout << "Average Loss: " << total_loss / count << std::endl;
     std::cout << "True Positive: " << conf_matrix[0] << std::endl;
-    std::cout << "True Negative: " << conf_matrix[1] << std::endl;
-    std::cout << "False Positive: " << conf_matrix[2] << std::endl;
-    std::cout << "False Negative: " << conf_matrix[3] << std::endl;
+    std::cout << "True Negative: " << conf_matrix[3] << std::endl;
+    std::cout << "False Positive: " << conf_matrix[1] << std::endl;
+    std::cout << "False Negative: " << conf_matrix[2] << std::endl;
     std::cout << "Accuracy: " << accuracy(classifications, label_values) << std::endl;
     std::cout << "Precision: " << precision(classifications, label_values) << std::endl;
     std::cout << "Recall: " << recall(classifications, label_values) << std::endl;
@@ -223,7 +217,6 @@ void LogisticRegression::handle_params(const std::string &params_path) {
 
     // Handle model data if given
     if (empty_model) {
-        params_file.close();
         return;
     }
     raw_info.reserve(INFO_SIZE());
@@ -245,7 +238,6 @@ void LogisticRegression::handle_params(const std::string &params_path) {
     catch (const std::out_of_range &oor) {
         throw std::runtime_error("(handle_params model info) Out of range");
     }
-    params_file.close();
 }
 
 void LogisticRegression::process_epoch(std::ifstream &data_file) {
@@ -274,7 +266,11 @@ void LogisticRegression::process_epoch(std::ifstream &data_file) {
     }
     // Handle the last batch
     if (i_batch > 0) {
-        update_model(prediction_batch, label_value_batch, feature_values_batch);
+        // Only use the filled portion of the batch vectors
+        std::vector<float> label_value_batch_partial(label_value_batch.begin(), label_value_batch.begin() + i_batch);
+        std::vector<float> prediction_batch_partial(prediction_batch.begin(), prediction_batch.begin() + i_batch);
+        std::vector<std::vector<float>> feature_values_batch_partial(feature_values_batch.begin(), feature_values_batch.begin() + i_batch);
+        update_model(prediction_batch_partial, label_value_batch_partial, feature_values_batch_partial);
     }
 }
 
@@ -300,7 +296,7 @@ float LogisticRegression::get_val_loss(std::ifstream &val_file, const float prev
         val_line_num++;
     }
     val_loss /= val_line_num;
-    return val_loss;;
+    return val_loss;
 }
 
 float LogisticRegression::auc(const std::vector<float> &predictions, const std::vector<int> &label_values) const {
@@ -311,7 +307,7 @@ float LogisticRegression::auc(const std::vector<float> &predictions, const std::
     // Create ROC points by varying the threshold
     const int partitions = 100;
     std::vector<std::pair<float, float>> roc_points;
-    for (int i = 0; i <= partitions; ++i) {
+    for (unsigned int i = 0; i <= partitions; ++i) {
         float threshold = static_cast<float>(i) / partitions;
         std::vector<int> classifications;
         classifications.reserve(predictions.size());
@@ -332,7 +328,7 @@ float LogisticRegression::auc(const std::vector<float> &predictions, const std::
 
     // Trapezoidal integration
     float area = 0.0f;
-    for (int i = 1; i <= partitions; ++i) {
+    for (unsigned int i = 1; i <= partitions; ++i) {
         float delta_fpr = roc_points[i].first - roc_points[i - 1].first;
         float avg_tpr = 0.5f * (roc_points[i].second + roc_points[i - 1].second);
         area += delta_fpr * avg_tpr;

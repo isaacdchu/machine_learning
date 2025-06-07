@@ -16,7 +16,6 @@ std::vector<std::vector<float>> get_input(const std::string* data_path, const bo
         parsed_line = process_line(parse_csv_line(line));
         data.push_back(parsed_line);
     }
-    myfile.close();
     return data;
 }
 
