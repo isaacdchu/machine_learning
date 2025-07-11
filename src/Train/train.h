@@ -8,6 +8,9 @@
 #include "../Model/model.h"
 #include "../Model/logistic_regression.h"
 
+// test
+int print_number();
+
 int main(int argc, char **argv);
 
 #endif // TRAIN_H
